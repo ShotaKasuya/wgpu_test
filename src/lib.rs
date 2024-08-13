@@ -1,6 +1,10 @@
+use std::ops::ControlFlow;
+use wgpu::{Backends, Color, CommandEncoderDescriptor, Device, Instance, InstanceDescriptor, LoadOp, Operations, PowerPreference, Queue, RenderPassColorAttachment, RenderPassDescriptor, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor};
+use winit::dpi::PhysicalSize;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use winit::window::Window;
 use winit::event::*;
 use winit::event_loop::EventLoop;
 use winit::keyboard::PhysicalKey;
@@ -8,7 +12,7 @@ use winit::window::WindowBuilder;
 use winit::keyboard::KeyCode;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
-pub fn run() {
+pub async fn run() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -18,8 +22,9 @@ pub fn run() {
         }
     }
 
-    let event_loop=EventLoop::new().unwrap();
+    let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let mut state = State::new(&window).await;
 
     #[cfg(target_arch = "wasm32")]
     {
@@ -46,20 +51,176 @@ pub fn run() {
             Event::WindowEvent {
                 ref event,
                 window_id,
-            } if window_id == window.id() => match event
-            {
-                WindowEvent::CloseRequested
-                | WindowEvent::KeyboardInput {
-                    event:
-                    KeyEvent{
-                        state: ElementState::Pressed,
-                        physical_key: PhysicalKey::Code(KeyCode::Escape),
+            } if window_id == state.window().id() => if !state.input(event) {
+                match event {
+                    WindowEvent::CloseRequested
+                    | WindowEvent::KeyboardInput {
+                        event:
+                        KeyEvent {
+                            state: ElementState::Pressed,
+                            physical_key: PhysicalKey::Code(KeyCode::Escape),
+                            ..
+                        },
                         ..
-                    },
-                    ..
-                } => control_flow.exit(),
-                _ => {}
+                    } => control_flow.exit(),
+                    WindowEvent::Resized(physical_size) => {
+                        state.resize(*physical_size);
+                    }
+                    WindowEvent::RedrawRequested => {
+                        state.window().request_redraw();
+
+                        state.update();
+                        match state.render() {
+                            Ok(_) => {}
+                            Err(SurfaceError::Lost | SurfaceError::Outdated) => state.resize(state.size),
+                            Err(SurfaceError::OutOfMemory) => {
+                                log::error!("outOfMemory");
+                                control_flow.exit();
+                            },
+                            Err(SurfaceError::Timeout) => {
+                                log::warn!("Surface timeout");
+                            },
+                            Err(e) => eprintln!("{:?}", e),
+                        }
+                    }
+                    _ => {}
+                }
             },
+            Event::AboutToWait => {
+                state.window().request_redraw();
+            }
             _ => {}
-    }).unwrap();
+        }).unwrap();
+}
+
+
+struct State<'a> {
+    surface: Surface<'a>,
+    device: Device,
+    queue: Queue,
+    config: SurfaceConfiguration,
+    size: PhysicalSize<u32>,
+    // The window must be declared after the surface so
+    // it gets dropped after it as the surface contains
+    // unsafe reference to the window's resource
+    window: &'a Window,
+}
+
+impl<'a> State<'a> {
+    // Creating some of the wgpu types requires async code
+    async fn new(window: &'a Window) -> State<'a> {
+        let size = window.inner_size();
+
+        // instanceはGPUのハンドル
+        let instance = Instance::new(InstanceDescriptor {
+            #[cfg(not(target_arch = "wasm32"))]
+            backends: Backends::PRIMARY,
+            #[cfg(target_arch = "wasm32")]
+            backends: Backends::GL,
+            ..Default::default()
+        });
+
+        let surface = instance.create_surface(window).unwrap();
+        let adapter = instance.request_adapter(
+            &wgpu::RequestAdapterOptions {
+                power_preference: PowerPreference::default(),
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            },
+        ).await.unwrap();
+
+        let (device, queue) = adapter.request_device(
+            &wgpu::DeviceDescriptor {
+                required_features: wgpu::Features::empty(),
+                // WebGLはwgpuのすべての機能に対応しているわけではないため、いくつか機能を無効化します
+                required_limits: if cfg!(target_arch = "wasm32") {
+                    wgpu::Limits::downlevel_webgl2_defaults()
+                } else {
+                    wgpu::Limits::default()
+                },
+                label: None,
+                memory_hints: Default::default(),
+            },
+            None, // Trace path
+        ).await.unwrap();
+
+        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_format = surface_caps.formats.iter()
+            .find(|f| f.is_srgb())
+            .copied()
+            .unwrap_or(surface_caps.formats[0]);
+        let config = wgpu::SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: surface_format,
+            width: size.width,
+            height: size.height,
+            present_mode: surface_caps.present_modes[0],
+            alpha_mode: surface_caps.alpha_modes[0],
+            view_formats: vec![],
+            desired_maximum_frame_latency: 2,
+        };
+
+        Self {
+            window,
+            surface,
+            device,
+            queue,
+            config,
+            size,
+        }
+    }
+
+    pub fn window(&self) -> &Window {
+        &self.window
+    }
+
+    fn resize(&mut self, new_size: PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = new_size.width;
+            self.config.height = new_size.height;
+            self.surface.configure(&self.device, &self.config);
+        }
+    }
+
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        false
+    }
+
+    fn update(&mut self) {}
+
+    fn render(&mut self) -> Result<(), SurfaceError> {
+        let output = self.surface.get_current_texture()?;
+        let view = output.texture.create_view(&TextureViewDescriptor::default());
+        let mut encoder = self.device.create_command_encoder(&CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
+
+        {
+            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+                label: Some("Render Pass"),
+                color_attachments: &[Some(RenderPassColorAttachment {
+                    view: &view,
+                    resolve_target: None,
+                    ops: Operations {
+                        load: LoadOp::Clear(Color {
+                            r: 0.1,
+                            g: 0.2,
+                            b: 0.3,
+                            a: 1.0,
+                        }),
+                        store: StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                occlusion_query_set: None,
+                timestamp_writes: None,
+            });
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+        output.present();
+
+        Ok(())
+    }
 }

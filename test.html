@@ -16,8 +16,8 @@
 <body id="wasm-example">
 <script type="module">
     import init from "./pkg/wgpu_test.js";
-    init().then(() => {
-        console.log("WASM Loaded");
+    window.addEventListener("load", () => {
+        init();
     });
 </script>
 </body>

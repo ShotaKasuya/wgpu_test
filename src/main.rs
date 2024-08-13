@@ -1,5 +1,5 @@
 use wgpu_test::run;
 
 fn main() {
-    run();
+    pollster::block_on(run());
 }
