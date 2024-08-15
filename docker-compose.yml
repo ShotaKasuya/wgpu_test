@@ -1,0 +1,10 @@
+version: '3'
+services:
+  web:
+    image: node:18-alpine  # 軽量なNode.jsイメージを使用
+    command: npx http-server -p 8080
+    volumes:
+      - ./:/usr/src/app
+    working_dir: /usr/src/app
+    ports:
+      - "8080:8080"
