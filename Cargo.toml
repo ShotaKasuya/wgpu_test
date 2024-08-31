@@ -13,6 +13,12 @@ log = "0.4.22"
 wgpu = "22.0"
 pollster = "0.3.0"
 bytemuck = {version = "1.16.3", features = ["derive"]}
+cfg-if = "1.0.0"
+
+[dependencies.image]
+version = "0.25.2"
+default-features = false
+features = ["png", "jpeg"]
 
 # wasm settings
 cfg-if = "1.0.0"
