@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use wgpu::{Backends, Buffer, Color, CommandEncoderDescriptor, Device, Instance, InstanceDescriptor, LoadOp, Operations, PowerPreference, Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, StoreOp, Surface, SurfaceConfiguration, SurfaceError, TextureUsages, TextureViewDescriptor};
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
@@ -10,6 +11,7 @@ use winit::event_loop::EventLoop;
 use winit::keyboard::PhysicalKey;
 use winit::window::WindowBuilder;
 use winit::keyboard::KeyCode;
+use crate::camera::Camera;
 
 mod texture;
 mod camera;
@@ -110,6 +112,7 @@ struct State<'a> {
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: texture::Texture,
+    camera: Camera,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe reference to the window's resource
@@ -188,9 +191,9 @@ impl<'a> State<'a> {
                         ty: wgpu::BindingType::Texture {
                             multisampled: false,
                             view_dimension: wgpu::TextureViewDimension::D2,
-                            sample_type: wgpu::TextureSampleType::Float {filterable: true},
+                            sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         },
-                        count:None,
+                        count: None,
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
@@ -211,12 +214,21 @@ impl<'a> State<'a> {
                         resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
                     },
                     wgpu::BindGroupEntry {
-                        binding:1,
+                        binding: 1,
                         resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
                     }
                 ],
                 label: Some("diffuse_bind_group"),
             }
+        );
+        let camera = Camera::new(
+            (0.0, 1.0, 2.0).into(),
+            (0.0, 0.0, 0.0).into(),
+            Vector3::unit_y(),
+            config.width as f32 / config.height as f32,
+            45.0,
+            0.1,
+            100.0,
         );
         let render_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -276,7 +288,7 @@ impl<'a> State<'a> {
         );
         let num_vertices = VERTICES.len() as u32;
         let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor{
+            &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
                 contents: bytemuck::cast_slice(INDICES),
                 usage: wgpu::BufferUsages::INDEX,
@@ -298,6 +310,7 @@ impl<'a> State<'a> {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
+            camera,
         }
     }
 
