@@ -1,3 +1,5 @@
+pub mod camera_uniform;
+
 use cgmath::*;
 
 pub const OPENGL_TO_WGPU_MATRIX: Matrix4<f32> = Matrix4::new(
