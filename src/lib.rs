@@ -261,7 +261,7 @@ impl<'a> State<'a> {
             }
         );
         let camera_bind_group = device.create_bind_group(
-            &wgpu::BindGroupDescriptor {
+            &BindGroupDescriptor {
                 layout: &camera_bind_group_layout,
                 entries: &[
                     BindGroupEntry {
@@ -271,8 +271,8 @@ impl<'a> State<'a> {
                 ],
                 label: Some("camera_bind_group"),
             });
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        let render_pipeline_layout = device.create_pipeline_layout(
+            &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[
                     &texture_bind_group_layout,
@@ -414,6 +414,7 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
