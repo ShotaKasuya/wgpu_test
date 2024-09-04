@@ -1,9 +1,9 @@
-use crate::camera::Camera;
+use crate::camera::{Camera, OPENGL_TO_WGPU_MATRIX};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {
-    view_proj: [[f32;4];4],
+    view_proj: [[f32; 4]; 4],
 }
 
 impl CameraUniform {
@@ -15,6 +15,6 @@ impl CameraUniform {
     }
 
     pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+        self.view_proj = (OPENGL_TO_WGPU_MATRIX * camera.build_view_projection_matrix()).into();
     }
 }
