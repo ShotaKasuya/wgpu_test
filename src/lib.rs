@@ -17,6 +17,7 @@ use crate::camera::camera_uniform::CameraUniform;
 
 mod texture;
 mod camera;
+mod instance;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(start))]
 pub async fn run() {
