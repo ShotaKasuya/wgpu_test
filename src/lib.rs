@@ -435,7 +435,7 @@ struct Vertex {
 impl Vertex {
     fn desc() -> VertexBufferLayout<'static> {
         VertexBufferLayout {
-            array_stride: size_of::<[f32; 3]>() as BufferAddress,
+            array_stride: std::mem::size_of::<[f32; 3]>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,
             attributes: &[
                 VertexAttribute {
@@ -444,7 +444,7 @@ impl Vertex {
                     format: VertexFormat::Float32x3,
                 },
                 VertexAttribute {
-                    offset: size_of::<[f32; 3]>() as BufferAddress,
+                    offset: std::mem::size_of::<[f32; 3]>() as BufferAddress,
                     shader_location: 1,
                     format: VertexFormat::Float32x2,
                 }
