@@ -12,6 +12,7 @@ use winit::keyboard::PhysicalKey;
 use winit::window::WindowBuilder;
 use winit::keyboard::KeyCode;
 use crate::camera::Camera;
+use crate::camera::camera_controller::CameraController;
 use crate::camera::camera_uniform::CameraUniform;
 
 mod texture;
@@ -116,7 +117,8 @@ struct State<'a> {
     camera: Camera,
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
-    camera_bind_group: wgpu::BindGroup,
+    camera_bind_group: BindGroup,
+    camera_controller: CameraController,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe reference to the window's resource
@@ -225,6 +227,7 @@ impl<'a> State<'a> {
                 label: Some("diffuse_bind_group"),
             }
         );
+        let camera_controller = CameraController::new(0.2);
         let camera = Camera::new(
             (0.0, 1.0, 2.0).into(),
             (0.0, 0.0, 0.0).into(),
@@ -358,6 +361,7 @@ impl<'a> State<'a> {
             camera_uniform,
             camera_buffer,
             camera_bind_group,
+            camera_controller,
         }
     }
 
@@ -376,10 +380,14 @@ impl<'a> State<'a> {
 
     #[allow(unused_variables)]
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        self.camera_controller.process_events(event)
     }
 
-    fn update(&mut self) {}
+    fn update(&mut self) {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+    }
 
     fn render(&mut self) -> Result<(), SurfaceError> {
         let output = self.surface.get_current_texture()?;
@@ -453,6 +461,7 @@ impl Vertex {
     }
 }
 
+// Changed
 const VERTICES: &[Vertex] = &[
     Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.99240386] }, // A
     Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.56958647] }, // B
