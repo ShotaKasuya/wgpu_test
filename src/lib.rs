@@ -1,4 +1,5 @@
-use cgmath::Vector3;
+use cgmath::{Deg, Quaternion, Vector3};
+use cgmath::prelude::*;
 use wgpu::*;
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
@@ -14,6 +15,7 @@ use winit::keyboard::KeyCode;
 use crate::camera::Camera;
 use crate::camera::camera_controller::CameraController;
 use crate::camera::camera_uniform::CameraUniform;
+use crate::instance::{InstanceRaw, INSTANCE_DISPLACEMENT, NUM_INSTANCE_PER_ROW};
 
 mod texture;
 mod camera;
@@ -120,6 +122,8 @@ struct State<'a> {
     camera_uniform: CameraUniform,
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
+    instances: Vec<instance::Instance>,
+    instance_buffer: Buffer,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe reference to the window's resource
@@ -273,6 +277,28 @@ impl<'a> State<'a> {
             label: Some("Shader"),
             source: ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
         });
+        let instances = (0..NUM_INSTANCE_PER_ROW).flat_map(|z| {
+            (0..NUM_INSTANCE_PER_ROW).map(move |x| {
+                let position = Vector3{ x: x as f32, y: 0.0, z: z as f32} -INSTANCE_DISPLACEMENT;
+                let rotation = if position.is_zero() {
+                    Quaternion::from_axis_angle(Vector3::unit_z(), Deg(0.0))
+                } else {
+                    Quaternion::from_axis_angle(position.normalize(), Deg(45.0))
+                };
+
+                instance::Instance {
+                    position, rotation
+                }
+            })
+        }).collect::<Vec<_>>();
+        let instance_data = instances.iter().map(instance::Instance::to_raw).collect::<Vec<_>>();
+        let instance_buffer = device.create_buffer_init(
+            &util::BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&instance_data),
+                usage: BufferUsages::VERTEX,
+            }
+        );
         let render_pipeline_layout = device.create_pipeline_layout(
             &PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
@@ -290,6 +316,7 @@ impl<'a> State<'a> {
                 entry_point: "vs_main",
                 buffers: &[
                     Vertex::desc(),
+                    InstanceRaw::desc(),
                 ],
                 compilation_options: PipelineCompilationOptions::default(),
             },
@@ -332,7 +359,6 @@ impl<'a> State<'a> {
                 usage: BufferUsages::VERTEX,
             }
         );
-        let num_vertices = VERTICES.len() as u32;
         let index_buffer = device.create_buffer_init(
             &util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
@@ -360,6 +386,8 @@ impl<'a> State<'a> {
             camera_buffer,
             camera_bind_group,
             camera_controller,
+            instances,
+            instance_buffer,
         }
     }
 
@@ -419,9 +447,10 @@ impl<'a> State<'a> {
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
