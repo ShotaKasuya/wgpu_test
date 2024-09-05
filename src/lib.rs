@@ -124,6 +124,7 @@ struct State<'a> {
     camera_bind_group: BindGroup,
     instances: Vec<instance::Instance>,
     instance_buffer: Buffer,
+    depth_texture: texture::Texture,
     // The window must be declared after the surface so
     // it gets dropped after it as the surface contains
     // unsafe reference to the window's resource
@@ -185,7 +186,7 @@ impl<'a> State<'a> {
         };
         let diffuse_bytes = include_bytes!("../happy-tree.png");
         let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
-
+        let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
         use image::GenericImageView;
 
         let texture_bind_group_layout = device.create_bind_group_layout(
@@ -342,7 +343,13 @@ impl<'a> State<'a> {
                 // Requires Features::CONSERVATIVE_RASTERIZATION
                 conservative: false,
             },
-            depth_stencil: None,
+            depth_stencil: Some(DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: CompareFunction::Less,
+                stencil: StencilState::default(),
+                bias: DepthBiasState::default(),
+            }),
             multisample: MultisampleState {
                 count: 1,
                 mask: !0,
@@ -388,6 +395,7 @@ impl<'a> State<'a> {
             camera_controller,
             instances,
             instance_buffer,
+            depth_texture,
         }
     }
 
@@ -401,6 +409,7 @@ impl<'a> State<'a> {
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
+            self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
         }
     }
 
@@ -438,7 +447,14 @@ impl<'a> State<'a> {
                         store: StoreOp::Store,
                     },
                 })],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
+                    depth_ops: Some(Operations {
+                        load: LoadOp::Clear(1.0),
+                        store: StoreOp::Store,
+                    }),
+                    stencil_ops: None,
+                }),
                 occlusion_query_set: None,
                 timestamp_writes: None,
             });
