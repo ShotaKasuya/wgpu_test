@@ -15,8 +15,8 @@ use winit::keyboard::KeyCode;
 use crate::camera::Camera;
 use crate::camera::camera_controller::CameraController;
 use crate::camera::camera_uniform::CameraUniform;
-use crate::instance::{InstanceRaw, INSTANCE_DISPLACEMENT, NUM_INSTANCE_PER_ROW};
-use crate::model::{DrawModel, Vertex};
+use crate::instance::{InstanceRaw, NUM_INSTANCE_PER_ROW};
+use crate::model::{Vertex};
 use crate::model::model::ModelVertex;
 
 mod texture;
@@ -86,13 +86,10 @@ pub async fn run() {
                         state.update();
                         match state.render() {
                             Ok(_) => {}
-                            Err(SurfaceError::Lost | SurfaceError::Outdated) => state.resize(state.size),
+                            Err(SurfaceError::Lost) => state.resize(state.size),
                             Err(SurfaceError::OutOfMemory) => {
                                 log::error!("outOfMemory");
                                 control_flow.exit();
-                            }
-                            Err(SurfaceError::Timeout) => {
-                                log::warn!("Surface timeout");
                             }
                             Err(e) => eprintln!("{:?}", e),
                         }
@@ -191,7 +188,6 @@ impl<'a> State<'a> {
         let diffuse_bytes = include_bytes!("../happy-tree.png");
         let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
         let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
-        use image::GenericImageView;
 
         let texture_bind_group_layout = device.create_bind_group_layout(
             &BindGroupLayoutDescriptor {
@@ -465,8 +461,6 @@ impl<'a> State<'a> {
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
             render_pass.set_pipeline(&self.render_pipeline);
-            // render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            // render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
 
             use model::DrawModel;
             render_pass.draw_model_instanced(&self.obj_model, 0..self.instances.len() as u32, &self.camera_bind_group);

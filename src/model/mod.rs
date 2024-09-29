@@ -3,7 +3,6 @@ pub mod material;
 pub mod mesh;
 
 use std::ops::Range;
-use wgpu::util::RenderEncoder;
 use wgpu::{BindGroup, VertexBufferLayout};
 use crate::model::material::Material;
 use crate::model::mesh::Mesh;

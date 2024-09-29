@@ -1,4 +1,3 @@
-use cgmath::InnerSpace;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::keyboard::{KeyCode, PhysicalKey};
 use crate::camera::Camera;
