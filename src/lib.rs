@@ -325,11 +325,13 @@ impl<'a> State<'a> {
                     let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
 
                     let position = Vector3 { x, y: 0.0, z };
-                    let rotation = if position.is_zero() {
-                        Quaternion::from_axis_angle(Vector3::unit_z(), Deg(0.0))
-                    } else {
-                        Quaternion::from_axis_angle(position.normalize(), Deg(45.0))
-                    };
+                    let rotation = 
+                    cgmath::Quaternion::from_axis_angle((0.0,1.0,0.0).into(), cgmath::Deg(180.0));
+                    // if position.is_zero() {
+                    //     Quaternion::from_axis_angle(Vector3::unit_z(), Deg(0.0))
+                    // } else {
+                    //     Quaternion::from_axis_angle(position.normalize(), Deg(45.0))
+                    // };
 
                     instance::Instance { position, rotation }
                 })
