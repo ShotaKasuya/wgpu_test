@@ -169,7 +169,7 @@ where
         camera_bind_group: &'b wgpu::BindGroup,
         light_bind_group: &'b wgpu::BindGroup,
     ) {
-        self.draw_model_instanced(model, 0..1, camera_bind_group, light_bind_group);
+        self.draw_light_model_instanced(model, 0..1, camera_bind_group, light_bind_group);
     }
 
     fn draw_light_model_instanced(
