@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, Quaternion, Vector3};
+use cgmath::{Quaternion, Vector3};
 use wgpu::{BufferAddress, VertexAttribute, VertexBufferLayout, VertexFormat, VertexStepMode};
 
 pub const NUM_INSTANCES_PER_ROW: u32 = 10;
@@ -71,7 +71,7 @@ impl InstanceRaw {
                     format: VertexFormat::Float32x3,
                 },
                 VertexAttribute {
-                    offset: mem::size_of::<[f32; 12]>() as BufferAddress,
+                    offset: mem::size_of::<[f32; 22]>() as BufferAddress,
                     shader_location: 11,
                     format: VertexFormat::Float32x3,
                 },
