@@ -172,11 +172,6 @@ struct State<'a> {
     config: SurfaceConfiguration,
     size: PhysicalSize<u32>,
     render_pipeline: RenderPipeline,
-    index_buffer: Buffer,
-    num_indices: u32,
-    #[allow(dead_code)]
-    diffuse_bind_group: BindGroup,
-    diffuse_texture: texture::Texture,
     camera: Camera,
     camera_controller: CameraController,
     camera_uniform: CameraUniform,
@@ -256,9 +251,6 @@ impl<'a> State<'a> {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        let diffuse_bytes = include_bytes!("../happy-tree.png");
-        let diffuse_texture =
-            texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
         let depth_texture =
             texture::Texture::create_depth_texture(&device, &config, "depth_texture");
 
@@ -281,23 +273,22 @@ impl<'a> State<'a> {
                         ty: BindingType::Sampler(SamplerBindingType::Filtering),
                         count: None,
                     },
+                    // normal map
+                    BindGroupLayoutEntry {
+                        binding: 2,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: true }, view_dimension: TextureViewDimension::D2, multisampled: false },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 3,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty  : BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                        count: None,
+                    },
                 ],
                 label: Some("texture_bind_group_layout"),
             });
-        let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
-            entries: &[
-                BindGroupEntry {
-                    binding: 0,
-                    resource: BindingResource::TextureView(&diffuse_texture.view),
-                },
-                BindGroupEntry {
-                    binding: 1,
-                    resource: BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });
         let camera = Camera::new(
             (0.0, 1.0, 2.0).into(),
             (0.0, 0.0, 0.0).into(),
@@ -449,13 +440,6 @@ impl<'a> State<'a> {
             )
         };
 
-        let index_buffer = device.create_buffer_init(&util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
-            usage: BufferUsages::INDEX,
-        });
-        let num_indices = INDICES.len() as u32;
-
         Self {
             window,
             surface,
@@ -464,10 +448,6 @@ impl<'a> State<'a> {
             config,
             size,
             render_pipeline,
-            index_buffer,
-            num_indices,
-            diffuse_bind_group,
-            diffuse_texture,
             camera,
             camera_uniform,
             camera_buffer,
