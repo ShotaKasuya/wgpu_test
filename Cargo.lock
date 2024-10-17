@@ -1164,6 +1164,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
+name = "learn_wgpu"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cfg-if",
+ "cgmath",
+ "console_error_panic_hook",
+ "console_log",
+ "env_logger",
+ "fs_extra",
+ "glob",
+ "image",
+ "log",
+ "pollster",
+ "reqwest",
+ "tobj",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2754,31 +2779,6 @@ dependencies = [
  "bitflags 2.6.0",
  "js-sys",
  "web-sys",
-]
-
-[[package]]
-name = "wgpu_test"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "cfg-if",
- "cgmath",
- "console_error_panic_hook",
- "console_log",
- "env_logger",
- "fs_extra",
- "glob",
- "image",
- "log",
- "pollster",
- "reqwest",
- "tobj",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wgpu",
- "winit",
 ]
 
 [[package]]
